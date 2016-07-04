@@ -1,0 +1,13 @@
+{
+  "author": "CS50",
+  "contributors": [
+    {
+      "name": "Kareem Zidane"
+    }
+  ],
+  "description": "Allows users to create GitHub secret gists directly from CS50 IDE.",
+  "name": "harvard.cs50.gist",
+  "plugins": {
+    "gist": {}
+  }
+}

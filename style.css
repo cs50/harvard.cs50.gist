@@ -1,0 +1,39 @@
+/* http://www.thecssninja.com/css/even-better-image-preloading-with-css2 */
+body:after {
+    content: url("@{image-path}/github-dark.png") url("@{image-path}/github-light.png") url("@{image-path}/loading.gif");
+    display: none;
+}
+
+/* github icon in dark theme */
+.cs50-gist-dark {
+    background-image: url("@{image-path}/github-dark.png") !important;
+}
+
+/* github icon in light theme */
+.cs50-gist-light {
+    background-image: url("@{image-path}/github-light.png") !important;
+}
+
+/* loading icon */
+.cs50-gist-loading {
+	background-image: url("@{image-path}/loading.gif") !important;
+}
+
+.cs50-gist-dark, .cs50-gist-light, .cs50-gist-loading {
+    background-position: 3px center;
+    background-repeat: no-repeat;
+    background-size: 13px 13px;
+}
+
+/* gist URL field */
+.gist-url {
+    border: 1px solid #dedede;
+    border-radius:4px;
+    box-sizing: border-box;
+    cursor:pointer;
+    font-family: monospace;
+    font-size: 13px;
+    padding: 6px 10px;
+    text-align:center;
+    width: 100%;
+}
