@@ -268,8 +268,8 @@ define(function(require, exports, module) {
                         // show confirmation message when necessary
                         if (currentSession.confirm) {
                             confirm(
-                                "Confirm Sharing",
-                                "Too much code from this file is to be shared",
+                                "Create gist",
+                                "",
                                 "Are you sure you want to share this many lines of code?",
                                 // ok
                                 function() {
