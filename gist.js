@@ -1,7 +1,7 @@
 define(function(require, exports, module) {
     main.consumes = [
-        "ace", "Dialog", "dialog.confirm", "dialog.error", "Plugin",
-        "settings" , "ui"
+        "ace", "Dialog", "dialog.confirm", "dialog.error", "http", "Plugin",
+        "settings", "ui"
     ];
     main.provides = ["harvard.cs50.gist"];
     return main;
@@ -10,6 +10,7 @@ define(function(require, exports, module) {
         var aceHandler = imports.ace;
         var confirm = imports["dialog.confirm"].show;
         var Dialog = imports["Dialog"];
+        var http = imports.http;
         var error = imports["dialog.error"].show;
         var Plugin = imports.Plugin;
         var settings = imports.settings;
@@ -75,54 +76,54 @@ define(function(require, exports, module) {
              * @param {string} code code to be shared
              */
             function createGist(filename, code) {
-                if (!_.isString(filename) || !_.isString(code) || code === "") {
+                if (!_.isString(filename) || !_.isString(code) || code.length === 0) {
                     return;
                 }
 
-                // set up AJAX request
-                var request = new XMLHttpRequest();
-                // handle response
-                request.onreadystatechange = function() {
-                    if (request.readyState === XMLHttpRequest.DONE) {
-                        // handle successful creation of gist
-                        if (request.status === 201) {
-                            // gist URL
-                            var url = JSON.parse(request.responseText).html_url;
-                            // show URL dialog
-                            dialog.show();
-                            // update value of URL box
-                            urlbox.value = url;
-                            // select URL (allows easy copying)
-                            urlbox.focus();
-                        }
-                        else {
-                            // handle creation errors
-                            error("Error creating gist");
-                        }
-
-                        // hide loading icon
-                        currentSession.removeGutterDecoration(currentSession.row, icons.loading.class);
-                    }
-                };
-
-                // request method & API endpoint
-                request.open('POST', "https://api.github.com/gists");
-
-                // request headers
-                request.setRequestHeader("Content-Type", "application/json");
+                // show loading icon
+                currentSession.addGutterDecoration(
+                    currentSession.row, icons.loading.class
+                );
 
                 // request data
                 var requestData = {
-                  "description": "shared from CS50 IDE <https://cs50.io>",
-                  "files": {},
-                  "public": false
+                  description: "shared from CS50 IDE",
+                  files: {},
+                  public: false
                 };
+
                 // providing filename with proper extension enables syntax highlighting
-                requestData.files[filename] = {"content": code};
-                // send request
-                request.send(JSON.stringify(requestData));
-                // show loading icon
-                currentSession.addGutterDecoration(currentSession.row, icons.loading.class);
+                requestData.files[filename] = {content: code};
+
+                // initiate request
+                http.request(
+                    "https://api.github.com/gists", {
+                        method: "POST",
+                        body: requestData,
+                        contentType: "application/json"
+                    }, function(err, data) {
+
+                        // hide loading icon
+                        currentSession.removeGutterDecoration(
+                            currentSession.row, icons.loading.class
+                        );
+
+                        // handle errors
+                        if (err) {
+                            error("Error creating gist.");
+                            throw err;
+                        }
+
+                        // show URL dialog
+                        dialog.show();
+
+                        // update value of URL box
+                        urlbox.value = data.html_url;
+
+                        // select URL (allows easy copying)
+                        urlbox.focus();
+                    }
+                );
             }
 
             /**
