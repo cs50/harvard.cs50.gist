@@ -25,6 +25,7 @@ define(function(require, exports, module) {
          * Gist factory.
          */
         function Gist(developer, dependencies, editor) {
+
             // https://lodash.com/docs
             var _ = require("lodash");
             var basename = require("path").basename;
@@ -53,6 +54,10 @@ define(function(require, exports, module) {
 
             // instantiate plugin
             var plugin = new Plugin(developer, main.consumes);
+
+            // used to detect when selection is complete
+            var keyUp = true;
+            var mouseUp = true;
 
             /**
              * Sets up listener for selection change in current ace session,
@@ -167,9 +172,12 @@ define(function(require, exports, module) {
 
                 // remove old icon (if any)
                 if (_.isNumber(currentSession.row)) {
-                    //currentSession.removeGutterDecoration(currentSession.row, iconClass);
-                    currentSession.removeGutterDecoration(currentSession.row, icons.dark.class);
-                    currentSession.removeGutterDecoration(currentSession.row, icons.light.class);
+                    currentSession.removeGutterDecoration(
+                        currentSession.row, icons.dark.class
+                    );
+                    currentSession.removeGutterDecoration(
+                        currentSession.row, icons.light.class
+                    );
                 }
 
                 // erase icon's current row & reset confirm (e.g., when nothing is selected)
@@ -183,8 +191,13 @@ define(function(require, exports, module) {
 
                 // get icon's new row
                 currentSession.row = selection.getSelectionLead().row;
-                // show new icon
-                currentSession.addGutterDecoration(currentSession.row, iconClass);
+
+                // show icon only when selection complete
+                if (keyUp && mouseUp) {
+                    currentSession.addGutterDecoration(
+                        currentSession.row, iconClass
+                    );
+                }
 
                 // calculate ratio of selected lines to all lines
                 var lines = range.end.row - range.start.row + 1;
@@ -250,6 +263,34 @@ define(function(require, exports, module) {
                         window.open(this.value, "_blank");
                     }
                 });
+
+                // detect when selection is complete
+                ace.container.onkeydown = function(e) {
+
+                    // consider selection incomplete while shift key is down
+                    if (e.shiftKey) {
+                        keyUp = false;
+                        return;
+                    }
+
+                    updateIcon();
+                };
+                ace.container.onkeyup = function(e) {
+
+                    // consider selection complete only when shift key is up
+                    if (!e.shiftKey) {
+                        keyUp = true;
+                        updateIcon();
+                    }
+                }
+                ace.container.onmousedown = function() {
+                    mouseUp = false;
+                    updateIcon();
+                };
+                ace.container.onmouseup = function() {
+                    mouseUp = true;
+                    updateIcon();
+                };
 
                 // set up text-selection listener for current ace session
                 changeSession();
