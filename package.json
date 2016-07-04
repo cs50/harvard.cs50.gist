@@ -6,7 +6,7 @@
     }
   ],
   "description": "Allows users to create GitHub secret gists directly from CS50 IDE.",
-  "name": "c9.ide.cs50.gist",
+  "name": "harvard.cs50.gist",
   "plugins": {
     "gist": {}
   }

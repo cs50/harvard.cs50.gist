@@ -3,7 +3,7 @@ define(function(require, exports, module) {
         "ace", "Dialog", "dialog.confirm", "dialog.error", "Plugin",
         "settings" , "ui"
     ];
-    main.provides = ["c9.ide.cs50.gist"];
+    main.provides = ["harvard.cs50.gist"];
     return main;
 
     function main(options, imports, register) {
@@ -298,13 +298,13 @@ define(function(require, exports, module) {
 
             plugin.on("unload", function() {});
             plugin.freezePublicAPI({});
-            plugin.load(null, "c9.ide.cs50.gist");
+            plugin.load(null, "harvard.cs50.gist");
 
             return plugin;
         }
 
         register(null, {
-            "c9.ide.cs50.gist": Gist
+            "harvard.cs50.gist": Gist
         });
     }
 });
