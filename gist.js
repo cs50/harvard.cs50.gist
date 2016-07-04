@@ -287,7 +287,9 @@ define(function(require, exports, module) {
                     mouseUp = false;
                     updateIcon();
                 };
-                ace.container.onmouseup = function() {
+
+                // listening on document to handle dragging mouse out of viewport while selecting
+                document.onmouseup = function() {
                     mouseUp = true;
                     updateIcon();
                 };
