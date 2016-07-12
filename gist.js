@@ -42,17 +42,9 @@ define(function(require, exports, module) {
 
             // CSS classes for icons
             var icons = {
-                dark: {
-                    class: "cs50-gist-dark",
-                    skins: ["dark", "dark-gray", "flat-dark"]
-                },
-                light: {
-                    class: "cs50-gist-light",
-                    skins: ["light", "light-gray", "flat-light"]
-                },
-                loading: {
-                    class: "cs50-gist-loading"
-                }
+                dark: "cs50-gist-dark",
+                light: "cs50-gist-light",
+                loading: "cs50-gist-loading"
             };
 
             // instantiate plugin
@@ -91,7 +83,7 @@ define(function(require, exports, module) {
 
                 // show loading icon
                 currentSession.addGutterDecoration(
-                    currentSession.row, icons.loading.class
+                    currentSession.row, icons.loading
                 );
 
                 // request data
@@ -114,7 +106,7 @@ define(function(require, exports, module) {
 
                         // hide loading icon
                         currentSession.removeGutterDecoration(
-                            currentSession.row, icons.loading.class
+                            currentSession.row, icons.loading
                         );
 
                         // handle errors
@@ -139,14 +131,12 @@ define(function(require, exports, module) {
              * @return filename of current file or false on name-getting failure
              */
             function getFileName() {
-                var activeDoc = editor.activeDocument;
-                var tab = activeDoc.tab;
-                var path = tab.path;
-                if (!_.isObject(editor) || !_.isObject(activeDoc)
-                    || !_.isObject(tab) || !_.isString(path))
+                if (!_.isObject(editor) || !_.isObject(editor.activeDocument)
+                    || !_.isObject(editor.activeDocument.tab)
+                    || !_.isString(editor.activeDocument.tab.path))
                     return false;
 
-                return basename(path);
+                return basename(editor.activeDocument.tab.path);
             }
 
             /**
@@ -170,17 +160,17 @@ define(function(require, exports, module) {
                 var iconClass;
 
                 // pick dark or light icon based on skin
-                iconClass = icons.dark.skins.indexOf(skin) !== -1
-                    ? icons.dark.class
-                    : iconClass = icons.light.class;
+                iconClass = skin.indexOf("light") !== -1
+                    ? icons.light
+                    : icons.dark;
 
                 // remove old icon (if any)
                 if (_.isNumber(currentSession.row)) {
                     currentSession.removeGutterDecoration(
-                        currentSession.row, icons.dark.class
+                        currentSession.row, icons.dark
                     );
                     currentSession.removeGutterDecoration(
-                        currentSession.row, icons.light.class
+                        currentSession.row, icons.light
                     );
                 }
 
@@ -219,6 +209,8 @@ define(function(require, exports, module) {
              * @return {string} code with first n spaces trimmed from all lines
              */
             function trimSpaces(code) {
+                if (!_.isString(code))
+                    return false;
 
                 // split code into array of lines
                 var lines = code.split("\n");
