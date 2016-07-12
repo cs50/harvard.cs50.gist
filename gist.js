@@ -81,13 +81,13 @@ define(function(require, exports, module) {
             /**
              * creates a gist.
              *
-             * @param {string} filename the name of gist file (including extension)
+             * @param {string} filename gist file name (including extension)
              * @param {string} code code to be shared
              */
             function createGist(filename, code) {
-                if (!_.isString(filename) || !_.isString(code) || code.length === 0) {
+                if (!_.isString(filename) || !_.isString(code)
+                    || code.length === 0)
                     return;
-                }
 
                 // show loading icon
                 currentSession.addGutterDecoration(
@@ -101,7 +101,7 @@ define(function(require, exports, module) {
                   public: false
                 };
 
-                // providing filename with proper extension enables syntax highlighting
+                // providing filename with extension enables syntax highlighting
                 requestData.files[filename] = {content: code};
 
                 // initiate request
@@ -136,15 +136,15 @@ define(function(require, exports, module) {
             }
 
             /**
-             * @return filename of current file or false on name-getting failure.
+             * @return filename of current file or false on name-getting failure
              */
             function getFileName() {
                 var activeDoc = editor.activeDocument;
                 var tab = activeDoc.tab;
                 var path = tab.path;
-                if (!_.isObject(editor) || !_.isObject(activeDoc) || !_.isObject(tab) || !_.isString(path)) {
+                if (!_.isObject(editor) || !_.isObject(activeDoc)
+                    || !_.isObject(tab) || !_.isString(path))
                     return false;
-                }
 
                 return basename(path);
             }
@@ -170,12 +170,9 @@ define(function(require, exports, module) {
                 var iconClass;
 
                 // pick dark or light icon based on skin
-                if (icons.dark.skins.indexOf(skin) !== -1) {
-                    iconClass = icons.dark.class;
-                }
-                else {
-                    iconClass = icons.light.class;
-                }
+                iconClass = icons.dark.skins.indexOf(skin) !== -1
+                    ? icons.dark.class
+                    : iconClass = icons.light.class;
 
                 // remove old icon (if any)
                 if (_.isNumber(currentSession.row)) {
@@ -187,28 +184,29 @@ define(function(require, exports, module) {
                     );
                 }
 
-                // erase icon's current row & reset confirm (e.g., when nothing is selected)
+                // erase icon's current row
                 currentSession.row = null;
+
+                // don't confirm sharing by default
                 currentSession.confirm = false;
 
                 // ensure something is selected
-                if (range.isEmpty()) {
+                if (range.isEmpty())
                     return;
-                }
 
                 // get icon's new row
                 currentSession.row = selection.getSelectionLead().row;
 
                 // show icon only when selection complete
-                if (keyUp && mouseUp) {
+                if (keyUp && mouseUp)
                     currentSession.addGutterDecoration(
                         currentSession.row, iconClass
                     );
-                }
 
                 // calculate ratio of selected lines to all lines
                 var lines = range.end.row - range.start.row + 1;
                 var ratio = lines / currentSession.getDocument().getLength();
+
                 // confirm if > 50%
                 currentSession.confirm = ratio > 0.5;
             }
@@ -217,7 +215,7 @@ define(function(require, exports, module) {
              * trims the minimum number of spaces from the start of every line
              * in the argument
              *
-             * @param {string} code code from which starting spaces will be trimmed
+             * @param {string} code code from which leading spaces to be trimmed
              * @return {string} code with first n spaces trimmed from all lines
              */
             function trimSpaces(code) {
@@ -362,7 +360,7 @@ define(function(require, exports, module) {
                     updateIcon();
                 };
 
-                // listening on document to handle dragging mouse out of viewport while selecting
+                // handle dragging mouse out of viewport while selecting
                 document.addEventListener("mouseup", function(){
                     mouseUp = true;
                     updateIcon();
@@ -383,34 +381,42 @@ define(function(require, exports, module) {
 
                     // get clicked region
                     var region = e.editor.renderer.$gutterLayer.getRegion(e);
-                    if (region == "markers" && clickedRow === currentSession.row)  {
 
-                        // temporarily prevent breakpoint toggling, if share icon clicked
+                    // handle clicking on share icon
+                    if (region == "markers"
+                        && clickedRow === currentSession.row)  {
+
+                        // temporarily prevent breakpoint toggling
                         e.stop();
 
                         // show confirmation message when necessary
-                        if (currentSession.confirm) {
+                        if (currentSession.confirm)
                             confirm(
                                 "Create gist",
                                 "",
-                                "Are you sure you want to share this many lines of code?",
+                                "Are you sure you want to share this many " +
+                                "lines of code?",
 
                                 // ok
                                 function() {
 
                                     // create new gist from selected text
-                                    createGist(getFileName(), trimSpaces(e.editor.getSelectedText()));
+                                    createGist(
+                                        getFileName(),
+                                        trimSpaces(e.editor.getSelectedText())
+                                    );
                                 },
 
                                 // cancel
                                 function() {}
                             );
-                        }
-                        else {
+                        else
 
                             // create new gist from selected text
-                            createGist(getFileName(), trimSpaces(e.editor.getSelectedText()));
-                        }
+                            createGist(
+                                getFileName(),
+                                trimSpaces(e.editor.getSelectedText())
+                            );
                     }
                 }, true);
 
@@ -426,7 +432,11 @@ define(function(require, exports, module) {
                 })();
 
                 // CSS for sharing icon once
-                ui.insertCss(require("text!./style.css"), options.staticPrefix, plugin);
+                ui.insertCss(
+                    require("text!./style.css"),
+                    options.staticPrefix,
+                    plugin
+                );
 
                 // update sharing icon whenever theme changes
                 settings.on("user/general/@skin", function(value) {
