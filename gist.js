@@ -32,11 +32,14 @@ define(function(require, exports, module) {
 
             // ace instance
             var ace = editor.ace;
+
             // current ace session
             var currentSession = null;
+
             // dialog for rendering gist URL
             var dialog = null;
             var urlbox = null;
+
             // CSS classes for icons
             var icons = {
                 dark: {
@@ -69,6 +72,7 @@ define(function(require, exports, module) {
 
                 // update current ace session
                 currentSession = ace.getSession();
+
                 // listen for selection change
                 ace.getSelection().on("changeSelection", updateIcon);
                 updateIcon();
@@ -155,13 +159,16 @@ define(function(require, exports, module) {
 
                 // selection object
                 var selection = ace.getSelection();
+
                 // selection range
                 var range = selection.getRange();
 
                 // current skin
                 var skin = settings.get("user/general/@skin");
+
                 // sharing icon class
                 var iconClass;
+
                 // pick dark or light icon based on skin
                 if (icons.dark.skins.indexOf(skin) !== -1) {
                     iconClass = icons.dark.class;
@@ -247,6 +254,7 @@ define(function(require, exports, module) {
             }
 
             plugin.on("load", function() {
+
                 // dialog box to render gist URL (on success)
                 dialog = new Dialog("CS50", main.consumes, {
 
@@ -315,10 +323,12 @@ define(function(require, exports, module) {
                     urlbox.onblur = function() {
                         this.focus();
                     };
+
                     // select URL (allows easy copying)
                     urlbox.onfocus = function() {
                         this.select();
                     }
+
                     // open gist URL on click
                     urlbox.onclick = function() {
                         if (!_.isString(this.value))
@@ -367,11 +377,14 @@ define(function(require, exports, module) {
 
                 // handle mouse clicks on gutter
                 ace.on("guttermousedown", function(e) {
+
                     // get clicked row
                     var clickedRow  = e.getDocumentPosition().row;
+
                     // get clicked region
                     var region = e.editor.renderer.$gutterLayer.getRegion(e);
                     if (region == "markers" && clickedRow === currentSession.row)  {
+
                         // temporarily prevent breakpoint toggling, if share icon clicked
                         e.stop();
 
@@ -381,16 +394,20 @@ define(function(require, exports, module) {
                                 "Create gist",
                                 "",
                                 "Are you sure you want to share this many lines of code?",
+
                                 // ok
                                 function() {
+
                                     // create new gist from selected text
                                     createGist(getFileName(), trimSpaces(e.editor.getSelectedText()));
                                 },
+
                                 // cancel
                                 function() {}
                             );
                         }
                         else {
+
                             // create new gist from selected text
                             createGist(getFileName(), trimSpaces(e.editor.getSelectedText()));
                         }
@@ -417,7 +434,14 @@ define(function(require, exports, module) {
                 }, plugin);
             });
 
-            plugin.on("unload", function() {});
+            plugin.on("unload", function() {
+                var ace = null;
+                var currentSession = null;
+                var dialog = null;
+                var urlbox = null;
+                var keyUp = true;
+                var mouseUp = true;
+            });
             plugin.freezePublicAPI({});
             plugin.load(null, "harvard.cs50.gist");
 
