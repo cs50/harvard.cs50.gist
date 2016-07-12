@@ -92,7 +92,7 @@ define(function(require, exports, module) {
 
                 // request data
                 var requestData = {
-                  description: "shared from CS50 IDE",
+                  description: filename + " - shared from CS50 IDE",
                   files: {},
                   public: false
                 };
@@ -206,25 +206,88 @@ define(function(require, exports, module) {
                 currentSession.confirm = ratio > 0.5;
             }
 
+            /**
+             * trims the minimum number of spaces from the start of every line
+             * in the argument
+             *
+             * @param {string} code code from which starting spaces will be trimmed
+             * @return {string} code with first n spaces trimmed from all lines
+             */
+            function trimSpaces(code) {
+
+                // split code into array of lines
+                var lines = code.split("\n");
+                var numOfLines = lines.length;
+                var n = 0;
+
+                // check if all lines start with >= n spaces, and calculate n
+                for (var i = 0; i < numOfLines; i++) {
+
+                    // return if at least one line doesn't have leading spaces
+                    if (lines[i].charAt(0) !== ' ')
+                        return code;
+
+                    var j = 1;
+                    var length = lines[i].length;
+                    var spaces = 1;
+
+                    // count leading spaces
+                    while (j < length && lines[i].charAt(j++) === ' ')
+                        spaces++;
+
+                    if (n === 0 || spaces < n)
+                        n = spaces;
+                }
+
+                // trim first n spaces
+                for (var i = 0, length = lines.length; i < length; i++)
+                    lines[i] = lines[i].substring(n);
+
+                return lines.join("\n");
+            }
+
             plugin.on("load", function() {
                 // dialog box to render gist URL (on success)
                 dialog = new Dialog("CS50", main.consumes, {
+
                     // dialog plugin name
                     name: "gist-success-dialog",
                     title: "Successfully Shared Code",
                     allowClose: true,
+
                     // prevent interacting with IDE
                     modal: true,
+
                     // bar at the bottom of dialog
                     elements: [
+
                         // "copy" hint
                         {
                             type: "label",
                             caption: "Press CTRL-C to copy"
                         },
+
                         // horizontal gap
                         {type: "filler"},
-                        // "Got it" button
+
+                        // "Share to Facebook" button
+                        {
+                            type: "button",
+                            caption: "Share to Facebook",
+                            color: "green",
+                            onclick: function() {
+                                if (!FB || !urlbox || !urlbox.value)
+                                    return;
+
+                                // open share dialog
+                                FB.ui({
+                                    method: "share",
+                                    href: urlbox.value
+                                }, function(response){});
+                            }
+                        },
+
+                        // "Got it!" button
                         {
                             type: "button",
                             caption: "Got it!",
@@ -238,6 +301,7 @@ define(function(require, exports, module) {
 
                 // draw gist URL dialog
                 dialog.on("draw", function(e) {
+
                     // dialog body
                     e.html.innerHTML = '<div>' +
                         '<h3>Your code was shared successfully!</h3>' +
@@ -289,13 +353,15 @@ define(function(require, exports, module) {
                 };
 
                 // listening on document to handle dragging mouse out of viewport while selecting
-                document.onmouseup = function() {
+                document.addEventListener("mouseup", function(){
                     mouseUp = true;
                     updateIcon();
-                };
+                });
+
 
                 // set up text-selection listener for current ace session
                 changeSession();
+
                 // set up text-selection listeners for new ace sessions
                 ace.on("changeSession", changeSession);
 
@@ -318,7 +384,7 @@ define(function(require, exports, module) {
                                 // ok
                                 function() {
                                     // create new gist from selected text
-                                    createGist(getFileName(), e.editor.getCopyText());
+                                    createGist(getFileName(), trimSpaces(e.editor.getSelectedText()));
                                 },
                                 // cancel
                                 function() {}
@@ -326,12 +392,23 @@ define(function(require, exports, module) {
                         }
                         else {
                             // create new gist from selected text
-                            createGist(getFileName(), e.editor.getCopyText());
+                            createGist(getFileName(), trimSpaces(e.editor.getSelectedText()));
                         }
                     }
                 }, true);
 
-                // CSS for sharing icon
+                // load facebook sdk, if not loaded
+                window.fbsdk || (function() {
+                    window.fbsdk = document.createElement("script");
+                    window.fbsdk.setAttribute("class", "fbsdk");
+                    fbsdk.type = "text/javascript";
+                    fbsdk.appendChild(
+                        document.createTextNode(require("text!./fbsdk.js"))
+                    );
+                    document.body.appendChild(fbsdk);
+                })();
+
+                // CSS for sharing icon once
                 ui.insertCss(require("text!./style.css"), options.staticPrefix, plugin);
 
                 // update sharing icon whenever theme changes
