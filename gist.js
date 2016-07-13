@@ -16,48 +16,84 @@ define(function(require, exports, module) {
         var settings = imports.settings;
         var ui = imports.ui;
 
-        // create instance of Gist for each instance of ace
-        aceHandler.on("create", function(e) {
-            new Gist("CS50", main.consumes, e.editor);
-        });
+        // https://lodash.com/docs
+        var _ = require("lodash");
+        var basename = require("path").basename;
+
+        // dialog for rendering gist URL
+        var dialog = null;
+        var urlbox = null;
+
+        // CSS classes for icons
+        var icons = null;
+
+        // load facebook sdk, if not loaded
+        var fbsdk = null;
+
+        // instantiate plugin
+        var plugin = new Plugin("CS50", main.consumes);
+
+        // used to detect when selection is complete
+        var keyUp = true;
+        var mouseUp = true;
+
+        // whether the plugin has been loaded
+        var loaded = false;
 
         /**
-         * Gist factory.
+         * trims the minimum number of spaces from the start of every line
+         * in the argument
+         *
+         * @param {string} code code from which leading spaces to be trimmed
+         * @return {string} code with first n spaces trimmed from all lines
          */
-        function Gist(developer, dependencies, editor) {
+        function trimSpaces(code) {
+            if (!_.isString(code))
+                return false;
 
-            // https://lodash.com/docs
-            var _ = require("lodash");
-            var basename = require("path").basename;
+            // split code into array of lines
+            var lines = code.split("\n");
+            var numOfLines = lines.length;
+            var n = 0;
+
+            // check if all lines start with >= n spaces, and calculate n
+            for (var i = 0; i < numOfLines; i++) {
+
+                // return if at least one line doesn't have leading spaces
+                if (lines[i].charAt(0) !== ' ')
+                    return code;
+
+                var j = 1;
+                var length = lines[i].length;
+                var spaces = 1;
+
+                // count leading spaces
+                while (j < length && lines[i].charAt(j++) === ' ')
+                    spaces++;
+
+                if (n === 0 || spaces < n)
+                    n = spaces;
+            }
+
+            // trim first n spaces
+            for (var i = 0, length = lines.length; i < length; i++)
+                lines[i] = lines[i].substring(n);
+
+            return lines.join("\n");
+        }
+
+        /**
+         * Associates a Gist instance with an ace instance
+         *
+         * @param {editor} editor an ace editor
+         */
+        function Gist(editor) {
 
             // ace instance
             var ace = editor.ace;
+
             // current ace session
             var currentSession = null;
-            // dialog for rendering gist URL
-            var dialog = null;
-            var urlbox = null;
-            // CSS classes for icons
-            var icons = {
-                dark: {
-                    class: "cs50-gist-dark",
-                    skins: ["dark", "dark-gray", "flat-dark"]
-                },
-                light: {
-                    class: "cs50-gist-light",
-                    skins: ["light", "light-gray", "flat-light"]
-                },
-                loading: {
-                    class: "cs50-gist-loading"
-                }
-            };
-
-            // instantiate plugin
-            var plugin = new Plugin(developer, main.consumes);
-
-            // used to detect when selection is complete
-            var keyUp = true;
-            var mouseUp = true;
 
             /**
              * Sets up listener for selection change in current ace session,
@@ -69,6 +105,7 @@ define(function(require, exports, module) {
 
                 // update current ace session
                 currentSession = ace.getSession();
+
                 // listen for selection change
                 ace.getSelection().on("changeSelection", updateIcon);
                 updateIcon();
@@ -77,27 +114,27 @@ define(function(require, exports, module) {
             /**
              * creates a gist.
              *
-             * @param {string} filename the name of gist file (including extension)
+             * @param {string} filename gist file name (including extension)
              * @param {string} code code to be shared
              */
             function createGist(filename, code) {
-                if (!_.isString(filename) || !_.isString(code) || code.length === 0) {
+                if (!_.isString(filename) || !_.isString(code)
+                    || code.length === 0)
                     return;
-                }
 
                 // show loading icon
                 currentSession.addGutterDecoration(
-                    currentSession.row, icons.loading.class
+                    currentSession.row, icons.loading
                 );
 
                 // request data
                 var requestData = {
-                  description: "shared from CS50 IDE",
+                  description: filename + " - shared from CS50 IDE",
                   files: {},
                   public: false
                 };
 
-                // providing filename with proper extension enables syntax highlighting
+                // providing filename with extension enables syntax highlighting
                 requestData.files[filename] = {content: code};
 
                 // initiate request
@@ -110,7 +147,7 @@ define(function(require, exports, module) {
 
                         // hide loading icon
                         currentSession.removeGutterDecoration(
-                            currentSession.row, icons.loading.class
+                            currentSession.row, icons.loading
                         );
 
                         // handle errors
@@ -132,17 +169,15 @@ define(function(require, exports, module) {
             }
 
             /**
-             * @return filename of current file or false on name-getting failure.
+             * @return filename of current file or false on name-getting failure
              */
             function getFileName() {
-                var activeDoc = editor.activeDocument;
-                var tab = activeDoc.tab;
-                var path = tab.path;
-                if (!_.isObject(editor) || !_.isObject(activeDoc) || !_.isObject(tab) || !_.isString(path)) {
+                if (!_.isObject(editor) || !_.isObject(editor.activeDocument)
+                    || !_.isObject(editor.activeDocument.tab)
+                    || !_.isString(editor.activeDocument.tab.path))
                     return false;
-                }
 
-                return basename(path);
+                return basename(editor.activeDocument.tab.path);
             }
 
             /**
@@ -155,200 +190,276 @@ define(function(require, exports, module) {
 
                 // selection object
                 var selection = ace.getSelection();
+
                 // selection range
                 var range = selection.getRange();
 
                 // current skin
                 var skin = settings.get("user/general/@skin");
+
                 // sharing icon class
                 var iconClass;
+
                 // pick dark or light icon based on skin
-                if (icons.dark.skins.indexOf(skin) !== -1) {
-                    iconClass = icons.dark.class;
-                }
-                else {
-                    iconClass = icons.light.class;
-                }
+                iconClass = skin.indexOf("light") !== -1
+                    ? icons.light
+                    : icons.dark;
 
                 // remove old icon (if any)
                 if (_.isNumber(currentSession.row)) {
                     currentSession.removeGutterDecoration(
-                        currentSession.row, icons.dark.class
+                        currentSession.row, icons.dark
                     );
                     currentSession.removeGutterDecoration(
-                        currentSession.row, icons.light.class
+                        currentSession.row, icons.light
                     );
                 }
 
-                // erase icon's current row & reset confirm (e.g., when nothing is selected)
+                // erase icon's current row
                 currentSession.row = null;
+
+                // don't confirm sharing by default
                 currentSession.confirm = false;
 
                 // ensure something is selected
-                if (range.isEmpty()) {
+                if (range.isEmpty())
                     return;
-                }
 
                 // get icon's new row
                 currentSession.row = selection.getSelectionLead().row;
 
                 // show icon only when selection complete
-                if (keyUp && mouseUp) {
+                if (keyUp && mouseUp)
                     currentSession.addGutterDecoration(
                         currentSession.row, iconClass
                     );
-                }
 
                 // calculate ratio of selected lines to all lines
                 var lines = range.end.row - range.start.row + 1;
                 var ratio = lines / currentSession.getDocument().getLength();
+
                 // confirm if > 50%
                 currentSession.confirm = ratio > 0.5;
             }
 
-            plugin.on("load", function() {
-                // dialog box to render gist URL (on success)
-                dialog = new Dialog("CS50", main.consumes, {
-                    // dialog plugin name
-                    name: "gist-success-dialog",
-                    title: "Successfully Shared Code",
-                    allowClose: true,
-                    // prevent interacting with IDE
-                    modal: true,
-                    // bar at the bottom of dialog
-                    elements: [
-                        // "copy" hint
-                        {
-                            type: "label",
-                            caption: "Press CTRL-C to copy"
-                        },
-                        // horizontal gap
-                        {type: "filler"},
-                        // "Got it" button
-                        {
-                            type: "button",
-                            caption: "Got it!",
-                            color: "green",
-                            onclick: function () {
-                                dialog.hide();
-                            }
-                        }
-                    ]
-                });
 
-                // draw gist URL dialog
-                dialog.on("draw", function(e) {
-                    // dialog body
-                    e.html.innerHTML = '<div>' +
-                        '<h3>Your code was shared successfully!</h3>' +
-                        '<input class="gist-url" type="url" readonly>' +
-                        '</div>';
 
-                    // gist URL box
-                    urlbox = e.html.querySelector("input");
+            // detect when selection is complete
+            ace.container.onkeydown = function(e) {
 
-                    // prevent blurring gist URL box
-                    urlbox.onblur = function() {
-                        this.focus();
-                    };
-                    // select URL (allows easy copying)
-                    urlbox.onfocus = function() {
-                        this.select();
-                    }
-                    // open gist URL on click
-                    urlbox.onclick = function() {
-                        if (!_.isString(this.value))
-                            return;
-
-                        window.open(this.value, "_blank");
-                    }
-                });
-
-                // detect when selection is complete
-                ace.container.onkeydown = function(e) {
-
-                    // consider selection incomplete while shift key is down
-                    if (e.shiftKey) {
-                        keyUp = false;
-                        return;
-                    }
-
-                    updateIcon();
-                };
-                ace.container.onkeyup = function(e) {
-
-                    // consider selection complete only when shift key is up
-                    if (!e.shiftKey) {
-                        keyUp = true;
-                        updateIcon();
-                    }
+                // consider selection incomplete while shift key is down
+                if (e.shiftKey) {
+                    keyUp = false;
+                    return;
                 }
-                ace.container.onmousedown = function() {
-                    mouseUp = false;
+
+                updateIcon();
+            };
+            ace.container.onkeyup = function(e) {
+
+                // consider selection complete only when shift key is up
+                if (!e.shiftKey) {
+                    keyUp = true;
                     updateIcon();
-                };
+                }
+            }
+            ace.container.onmousedown = function() {
+                mouseUp = false;
+                updateIcon();
+            };
 
-                // listening on document to handle dragging mouse out of viewport while selecting
-                document.onmouseup = function() {
-                    mouseUp = true;
-                    updateIcon();
-                };
-
-                // set up text-selection listener for current ace session
-                changeSession();
-                // set up text-selection listeners for new ace sessions
-                ace.on("changeSession", changeSession);
-
-                // handle mouse clicks on gutter
-                ace.on("guttermousedown", function(e) {
-                    // get clicked row
-                    var clickedRow  = e.getDocumentPosition().row;
-                    // get clicked region
-                    var region = e.editor.renderer.$gutterLayer.getRegion(e);
-                    if (region == "markers" && clickedRow === currentSession.row)  {
-                        // temporarily prevent breakpoint toggling, if share icon clicked
-                        e.stop();
-
-                        // show confirmation message when necessary
-                        if (currentSession.confirm) {
-                            confirm(
-                                "Create gist",
-                                "",
-                                "Are you sure you want to share this many lines of code?",
-                                // ok
-                                function() {
-                                    // create new gist from selected text
-                                    createGist(getFileName(), e.editor.getCopyText());
-                                },
-                                // cancel
-                                function() {}
-                            );
-                        }
-                        else {
-                            // create new gist from selected text
-                            createGist(getFileName(), e.editor.getCopyText());
-                        }
-                    }
-                }, true);
-
-                // CSS for sharing icon
-                ui.insertCss(require("text!./style.css"), options.staticPrefix, plugin);
-
-                // update sharing icon whenever theme changes
-                settings.on("user/general/@skin", function(value) {
-                    updateIcon();
-                }, plugin);
+            // handle dragging mouse out of viewport while selecting
+            document.addEventListener("mouseup", function(){
+                mouseUp = true;
+                updateIcon();
             });
 
-            plugin.on("unload", function() {});
-            plugin.freezePublicAPI({});
-            plugin.load(null, "harvard.cs50.gist");
 
-            return plugin;
+            // set up text-selection listener for current ace session
+            changeSession();
+
+            // set up text-selection listeners for new ace sessions
+            ace.on("changeSession", changeSession);
+
+            // handle mouse clicks on gutter
+            ace.on("guttermousedown", function(e) {
+
+                // get clicked row
+                var clickedRow  = e.getDocumentPosition().row;
+
+                // get clicked region
+                var region = e.editor.renderer.$gutterLayer.getRegion(e);
+
+                // handle clicking on share icon
+                if (region == "markers"
+                    && clickedRow === currentSession.row)  {
+
+                    // temporarily prevent breakpoint toggling
+                    e.stop();
+
+                    // show confirmation message when necessary
+                    if (currentSession.confirm)
+                        confirm(
+                            "Create gist",
+                            "",
+                            "Are you sure you want to share this many " +
+                            "lines of code?",
+
+                            // ok
+                            function() {
+
+                                // create new gist from selected text
+                                createGist(
+                                    getFileName(),
+                                    trimSpaces(e.editor.getSelectedText())
+                                );
+                            },
+
+                            // cancel
+                            function() {}
+                        );
+                    else
+
+                        // create new gist from selected text
+                        createGist(
+                            getFileName(),
+                            trimSpaces(e.editor.getSelectedText())
+                        );
+                }
+            }, true);
+
+            // update sharing icon whenever theme changes
+            settings.on("user/general/@skin", function(value) {
+                updateIcon();
+            }, plugin);
         }
 
+        plugin.on("load", function() {
+            if (loaded === true)
+                return;
+
+            loaded = true;
+            dialog = new Dialog("CS50", main.consumes, {
+
+                // dialog plugin name
+                name: "gist-success-dialog",
+                title: "Successfully Shared Code",
+                allowClose: true,
+
+                // prevent interacting with IDE
+                modal: true,
+
+                // bar at the bottom of dialog
+                elements: [
+
+                    // "copy" hint
+                    {
+                        type: "label",
+                        caption: "Press CTRL-C to copy"
+                    },
+
+                    // horizontal gap
+                    { type: "filler" },
+
+                    // "Share to Facebook" button
+                    {
+                        type: "button",
+                        caption: "Share to Facebook",
+                        color: "green",
+                        onclick: function() {
+                            if (!_.isObject(FB) || !_.isObject(urlbox)
+                                || !_.isString(urlbox.value))
+                                return;
+
+                            // open share dialog
+                            FB.ui({
+                                method: "share",
+                                href: urlbox.value
+                            }, function(response){});
+                        }
+                    },
+
+                    // "Got it!" button
+                    {
+                        type: "button",
+                        caption: "Got it!",
+                        color: "green",
+                        onclick: function () {
+                            dialog.hide();
+                        }
+                    }
+                ]
+            });
+
+            // draw gist URL dialog
+            dialog.on("draw", function(e) {
+
+                // dialog body
+                e.html.innerHTML = '<div>' +
+                    '<h3>Your code was shared successfully!</h3>' +
+                    '<input class="gist-url" type="url" readonly>' +
+                    '</div>';
+
+                // gist URL box
+                urlbox = e.html.querySelector("input");
+
+                // prevent blurring gist URL box
+                urlbox.onblur = urlbox.focus;
+
+                // select URL (allows easy copying)
+                urlbox.onfocus = urlbox.select;
+
+                // open gist URL on click
+                urlbox.onclick = function() {
+                    if (!_.isString(this.value))
+                        return;
+
+                    window.open(this.value, "_blank");
+                };
+            });
+
+            // sharing icon CSS classes
+            icons = {
+                dark: "cs50-gist-dark",
+                light: "cs50-gist-light",
+                loading: "cs50-gist-loading"
+            };
+
+            // CSS for sharing icon once
+            ui.insertCss(
+                require("text!./style.css"),
+                options.staticPrefix,
+                plugin
+            );
+
+            // load facebook sdk
+            fbsdk = document.createElement("script");
+            fbsdk.setAttribute("class", "fbsdk");
+            fbsdk.type = "text/javascript";
+            fbsdk.appendChild(
+                document.createTextNode(require("text!./fbsdk.js"))
+            );
+            document.body.appendChild(fbsdk);
+
+            // create an instance of Gist per ace instance
+            aceHandler.on("create", function(e) {
+                new Gist(e.editor);
+            });
+        });
+
+        plugin.on("unload", function() {
+            document.body.removeChild(fbsdk);
+            dialog = null;
+            urlbox = null;
+            icons = null;
+            fbsdk = null;
+            keyUp = true;
+            mouseUp = true;
+            loaded = false;
+        });
+        plugin.freezePublicAPI({});
         register(null, {
-            "harvard.cs50.gist": Gist
+            "harvard.cs50.gist": plugin
         });
     }
 });
