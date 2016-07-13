@@ -404,14 +404,10 @@ define(function(require, exports, module) {
                 urlbox = e.html.querySelector("input");
 
                 // prevent blurring gist URL box
-                urlbox.onblur = function() {
-                    this.focus();
-                };
+                urlbox.onblur = urlbox.focus;
 
                 // select URL (allows easy copying)
-                urlbox.onfocus = function() {
-                    this.select();
-                };
+                urlbox.onfocus = urlbox.select;
 
                 // open gist URL on click
                 urlbox.onclick = function() {
