@@ -1,7 +1,7 @@
 define(function(require, exports, module) {
     main.consumes = [
-        "ace", "Dialog", "dialog.confirm", "dialog.error", "http", "Plugin",
-        "settings", "ui"
+        "ace", "commands", "Dialog", "dialog.confirm", "dialog.error", "http",
+        "Plugin", "settings", "ui"
     ];
     main.provides = ["harvard.cs50.gist"];
     return main;
@@ -9,6 +9,7 @@ define(function(require, exports, module) {
     function main(options, imports, register) {
         var aceHandler = imports.ace;
         var confirm = imports["dialog.confirm"].show;
+        var commands = imports.commands;
         var Dialog = imports["Dialog"];
         var http = imports.http;
         var error = imports["dialog.error"].show;
@@ -218,8 +219,8 @@ define(function(require, exports, module) {
                 // erase icon's current row
                 currentSession.row = null;
 
-                // don't confirm sharing by default
-                currentSession.confirm = false;
+                // reset ratio of selected lines
+                currentSession.ratio = 0.0;
 
                 // ensure something is selected
                 if (range.isEmpty())
@@ -235,11 +236,8 @@ define(function(require, exports, module) {
                     );
 
                 // calculate ratio of selected lines to all lines
-                var lines = range.end.row - range.start.row + 1;
-                var ratio = lines / currentSession.getDocument().getLength();
-
-                // confirm if > 50%
-                currentSession.confirm = ratio > 0.5;
+                currentSession.ratio = (range.end.row - range.start.row + 1) /
+                    currentSession.getDocument().getLength();
             }
 
 
@@ -297,34 +295,27 @@ define(function(require, exports, module) {
                     // temporarily prevent breakpoint toggling
                     e.stop();
 
-                    // show confirmation message when necessary
-                    if (currentSession.confirm)
-                        confirm(
-                            "Create gist",
-                            "",
-                            "Are you sure you want to share this many " +
-                            "lines of code?",
+                    // show confirmation message
+                    confirm(
+                        "Create gist",
+                        "",
+                        "Are you sure you want to share " +
+                        (currentSession.ratio > 0.5 ? "this many " : "these ") +
+                        "lines of code?",
 
-                            // ok
-                            function() {
+                        // ok
+                        function() {
 
-                                // create new gist from selected text
-                                createGist(
-                                    getFileName(),
-                                    trimSpaces(e.editor.getSelectedText())
-                                );
-                            },
+                            // create new gist from selected text
+                            createGist(
+                                getFileName(),
+                                trimSpaces(e.editor.getSelectedText())
+                            );
+                        },
 
-                            // cancel
-                            function() {}
-                        );
-                    else
-
-                        // create new gist from selected text
-                        createGist(
-                            getFileName(),
-                            trimSpaces(e.editor.getSelectedText())
-                        );
+                        // cancel
+                        function() {}
+                    );
                 }
             }, true);
 
@@ -340,10 +331,9 @@ define(function(require, exports, module) {
 
             loaded = true;
             dialog = new Dialog("CS50", main.consumes, {
-
                 // dialog plugin name
                 name: "gist-success-dialog",
-                title: "Successfully Shared Code",
+                title: "Created Gist",
                 allowClose: true,
 
                 // prevent interacting with IDE
@@ -355,7 +345,9 @@ define(function(require, exports, module) {
                     // "copy" hint
                     {
                         type: "label",
-                        caption: "Press CTRL-C to copy"
+                        caption: "Press " +
+                            (commands.platform === "mac" ? "⌘" : "CTRL") +
+                            "-C to copy"
                     },
 
                     // horizontal gap
@@ -363,9 +355,9 @@ define(function(require, exports, module) {
 
                     // "Share to Facebook" button
                     {
+                        name: "shareToFb",
                         type: "button",
                         caption: "Share to Facebook",
-                        color: "green",
                         onclick: function() {
                             if (!_.isObject(FB) || !_.isObject(urlbox)
                                 || !_.isString(urlbox.value))
@@ -416,6 +408,16 @@ define(function(require, exports, module) {
 
                     window.open(this.value, "_blank");
                 };
+
+                // make "Share to Facebook" button blue
+                dialog.getElement("shareToFb", function(e) {
+                    var btn = e.$ext;
+                    btn.style.backgroundColor = "#3b5998";
+                    btn.style.backgroundImage = "initial";
+
+                    // remove border
+                    btn.removeChild(e.$ext.childNodes[3]);
+                });
             });
 
             // sharing icon CSS classes
