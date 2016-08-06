@@ -219,9 +219,6 @@ define(function(require, exports, module) {
                 // erase icon's current row
                 currentSession.row = null;
 
-                // reset ratio of selected lines
-                currentSession.ratio = 0.0;
-
                 // ensure something is selected
                 if (range.isEmpty())
                     return;
@@ -234,13 +231,7 @@ define(function(require, exports, module) {
                     currentSession.addGutterDecoration(
                         currentSession.row, iconClass
                     );
-
-                // calculate ratio of selected lines to all lines
-                currentSession.ratio = (range.end.row - range.start.row + 1) /
-                    currentSession.getDocument().getLength();
             }
-
-
 
             // detect when selection is complete
             ace.container.onkeydown = function(e) {
@@ -299,9 +290,9 @@ define(function(require, exports, module) {
                     confirm(
                         "Create gist",
                         "",
-                        "Are you sure you want to share " +
-                        (currentSession.ratio > 0.5 ? "this many " : "these ") +
-                        "lines of code?",
+                        "Are you sure you want to share the highlighted lines " +
+                        "of code? Do be reasonable, per CS50's policy on " +
+                        "academic honesty.",
 
                         // ok
                         function() {
