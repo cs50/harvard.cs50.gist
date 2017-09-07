@@ -288,7 +288,7 @@ define(function(require, exports, module) {
 
                     // show confirmation message
                     confirm(
-                        "Create gist",
+                        "Create Gist",
                         "",
                         "Are you sure you want to share the highlighted lines " +
                         "of code? Do be reasonable, per CS50's policy on " +
